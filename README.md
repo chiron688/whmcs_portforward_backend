@@ -1,6 +1,6 @@
 准备工作
 ```shell
-apt-get install -y git unzip curl wget sudo
+apt-get install -y git unzip curl wget sudo iptables
 ```
 然后运行
 ```shell
