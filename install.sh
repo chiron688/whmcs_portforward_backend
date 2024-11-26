@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# 定义变量
-REPO_URL="https://github.com/chiron688/whmcs_portforward_backend.git"
+# Define variables
+REPO_URL="https://github.com/<your-username>/<your-repo>.git"
 INSTALL_DIR="/usr/local/PortForward"
 BIN_DIR="/usr/bin"
 BRANCH="main"
@@ -11,36 +11,93 @@ Info="${Green_font_prefix}[Message]${Font_color_suffix}"
 Error="${Red_font_prefix}[ERROR]${Font_color_suffix}"
 Tip="${Green_font_prefix}[Tip]${Font_color_suffix}"
 
-# 默认值
-NIC=""
-URL=""
-KEY=""
-SOURCEIP=""
-MAGNIFICATION=0.5
-NODE_BW_MAX=100
-BURST=false
+# Initialize variables for command-line arguments
+nic=""
+url=""
+key=""
+sourceip=""
+magnification=""
+node_bw_max=""
+burst=""
+USE_PROXY=false
 
-# 检查依赖
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -nic)
+            nic="$2"
+            shift 2
+            ;;
+        -url)
+            url="$2"
+            shift 2
+            ;;
+        -key)
+            key="$2"
+            shift 2
+            ;;
+        -sourceip)
+            sourceip="$2"
+            shift 2
+            ;;
+        -magnification)
+            magnification="$2"
+            shift 2
+            ;;
+        -node_bw_max)
+            node_bw_max="$2"
+            shift 2
+            ;;
+        -burst)
+            burst="$2"
+            shift 2
+            ;;
+        -use_proxy)
+            USE_PROXY=true
+            shift 1
+            ;;
+        *)
+            echo -e "${Error} Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Check dependencies
 check_dependencies() {
     for cmd in git unzip wget curl; do
         if ! command -v $cmd &> /dev/null; then
-            echo -e " ${Error} 缺少必要工具：$cmd，请安装后再运行脚本。"
+            echo -e " ${Error} Missing required tool: $cmd. Please install it and re-run the script."
             exit 1
         fi
     done
 }
 
-# 下载工具
+# System check
+check_sys() {
+    if [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        release=$ID
+    elif command -v lsb_release &> /dev/null; then
+        release=$(lsb_release -si | tr '[:upper:]' '[:lower:]')
+    else
+        echo -e "${Error} Unable to detect the system type."
+        exit 1
+    fi
+    bit=$(uname -m)
+}
+
+# Download tool
 download_tool() {
     local url=$1
     local output=$2
     wget -q "$url" -O "$output" || {
-        echo -e " ${Error} 下载 $output 失败！URL: $url"
+        echo -e " ${Error} Failed to download $output from URL: $url"
         exit 1
     }
 }
 
-# 从 GitHub 拉取文件
+# Fetch files from GitHub
 fetch_files() {
     if [[ $USE_PROXY == true ]]; then
         REPO_URL="${GITHUB_PROXY}${REPO_URL}"
@@ -48,90 +105,176 @@ fetch_files() {
 
     if [[ -d "$INSTALL_DIR" ]]; then
         cd "$INSTALL_DIR" && git pull || {
-            echo -e " ${Error} 更新失败！"
+            echo -e " ${Error} Update failed!"
             exit 1
         }
     else
         git clone -b "$BRANCH" "$REPO_URL" "$INSTALL_DIR" || {
-            echo -e " ${Error} 克隆仓库失败！"
+            echo -e " ${Error} Failed to clone repository!"
             exit 1
         }
     fi
 }
 
-# 生成配置文件
-generate_config() {
-    cat > /usr/local/PortForward/slave/config.php <<EOF
-<?php
-\$nic = '${NIC}'; // 主网卡名称
-\$url = '${URL}';
-\$key = '${KEY}'; // 在 WHMCS 设置的 key
-\$sourceip = '${SOURCEIP}'; // 主网卡 IP 地址
-\$magnification = '${MAGNIFICATION}'; // 流量倍率
-\$node_bw_max = '${NODE_BW_MAX}'; // 节点最大带宽
-\$burst = '${BURST}'; // 带宽突发
-?>
-EOF
-
-    echo -e " ${Info} config.php 文件生成完成。"
-}
-
-# 解析参数
-parse_args() {
-    while [[ "$#" -gt 0 ]]; do
-        case "$1" in
-        -nic) NIC="$2"; shift ;;
-        -url) URL="$2"; shift ;;
-        -key) KEY="$2"; shift ;;
-        -sourceip) SOURCEIP="$2"; shift ;;
-        -magnification) MAGNIFICATION="$2"; shift ;;
-        -node_bw_max) NODE_BW_MAX="$2"; shift ;;
-        -burst) BURST="$2"; shift ;;
-        *) echo -e "${Error} 未知参数: $1"; exit 1 ;;
-        esac
-        shift
-    done
-
-    # 参数验证
-    if [[ -z "$NIC" || -z "$URL" || -z "$KEY" ]]; then
-        echo -e "${Error} 参数缺失。请提供 -nic, -url 和 -key 参数。"
-        exit 1
+# Get default network interface
+get_default_nic() {
+    local default_nic=$(ip route | grep default | awk '{print $5}' | head -n 1)
+    if [[ -z "$default_nic" ]]; then
+        echo "unknown"
+    else
+        echo "$default_nic"
     fi
 }
 
-# 安装函数
+# Generate configuration
+generate_config() {
+    # If nic is not provided, attempt to detect it
+    if [[ -z "$nic" ]]; then
+        local detected_nic=$(get_default_nic)
+        echo -e " ${Tip} Detected primary network interface: ${detected_nic}"
+        read -p "Please enter the network interface name (default: ${detected_nic}): " nic_input
+        nic=${nic_input:-$detected_nic}
+    fi
+
+    # If url is not provided, prompt for it
+    if [[ -z "$url" ]]; then
+        read -p "Please enter the WHMCS API URL (e.g., https://www.example.com/modules/addons/PortForward/apicall.php): " url_input
+        while [[ -z "$url_input" ]]; do
+            echo -e " ${Error} API URL cannot be empty. Please re-enter."
+            read -p "Please enter the API URL: " url_input
+        done
+        url="$url_input"
+    fi
+
+    # If key is not provided, prompt for it
+    if [[ -z "$key" ]]; then
+        read -p "Please enter the WHMCS API key: " key_input
+        while [[ -z "$key_input" ]]; do
+            echo -e " ${Error} API key cannot be empty. Please re-enter."
+            read -p "Please enter the WHMCS API key: " key_input
+        done
+        key="$key_input"
+    fi
+
+    # If source IP is not provided, attempt to detect it
+    if [[ -z "$sourceip" ]]; then
+        local detected_ip=$(ip addr show "$nic" | grep "inet " | awk '{print $2}' | cut -d/ -f1 | head -n 1)
+        if [[ -z "$detected_ip" ]]; then
+            detected_ip="unknown"
+        fi
+        echo -e " ${Tip} Detected IP address for ${nic}: ${detected_ip}"
+        read -p "Please enter the source IP address (default: ${detected_ip}): " ip_input
+        sourceip=${ip_input:-$detected_ip}
+    fi
+
+    # Set default values if not provided
+    magnification=${magnification:-0.5}
+    node_bw_max=${node_bw_max:-100}
+    burst=${burst:-false}
+
+    # Generate the configuration file
+    cat > /usr/local/PortForward/slave/config.php <<EOF
+<?php
+\$nic = '${nic}'; // Network interface name
+\$url = '${url}';
+\$key = '${key}'; // WHMCS API key
+\$sourceip = '${sourceip}'; // Source IP address
+\$magnification = '${magnification}'; // Traffic magnification
+\$node_bw_max = '${node_bw_max}'; // Node maximum bandwidth
+\$burst = '${burst}'; // Bandwidth burst
+?>
+EOF
+
+    echo -e " ${Info} config.php has been generated."
+}
+
+# Install function
 Install() {
-    check_dependencies
+    check_sys
+    if [[ ${release} == "centos" ]]; then
+        # CentOS installation logic
+        yum install wget unzip git -y
+        cat /etc/redhat-release | grep 7\..* | grep -i centos >/dev/null
+        if [[ $? -ne 0 ]]; then
+            echo -e " ${Error} CentOS 6/8 is not supported. Please use CentOS 7 x64."
+            exit 1
+        fi
+        echo -e " ${Tip} Installing EPEL and Webtatic..."
+        rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+        rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm
+        echo -e " ${Tip} Installing PHP 7.0..."
+        yum install -y php70w php70w-cli php70w-common php70w-gd php70w-ldap php70w-mbstring php70w-mcrypt php70w-mysql php70w-pdo
+    elif [[ ${release} == "debian" || ${release} == "ubuntu" ]]; then
+        # Debian and Ubuntu installation logic
+        apt update
+        echo -e " ${Tip} Installing PHP and dependencies..."
+        apt install -y wget git unzip curl software-properties-common
+        add-apt-repository ppa:ondrej/php -y
+        apt update
+        apt install -y php7.0 php7.0-cli php7.0-common php7.0-gd php7.0-ldap php7.0-mbstring php7.0-mysql php7.0-pdo
+    else
+        echo -e " ${Error} Unsupported system. Please use a supported system."
+        exit 1
+    fi
 
-    echo -e " ${Tip} 正在安装必要依赖..."
-    apt update && apt install -y wget git unzip curl php
+    echo -e " ${Tip} Installing Brook..."
+    download_tool "https://github.com/txthinking/brook/releases/download/v20210401/brook_linux_amd64" "/usr/bin/brook"
+    chmod +x /usr/bin/brook
 
-    echo -e " ${Tip} 下载主程序文件..."
+    echo -e " ${Tip} Installing Gost..."
+    download_tool "https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz" "gost-linux-amd64-2.11.1.gz"
+    gunzip gost-linux-amd64-2.11.1.gz
+    mv -f gost-linux-amd64-2.11.1 /usr/bin/gost
+    chmod +x /usr/bin/gost
+
+    echo -e " ${Tip} Installing tinyPortMapper..."
+    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/20200818.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
+    tar -xzf tinymapper_binaries.tar.gz
+    mv -f tinymapper_amd64 /usr/bin/tinymapper
+    chmod +x /usr/bin/tinymapper
+
+    echo -e " ${Tip} Installing goproxy..."
+    download_tool "https://github.com/snail007/goproxy/releases/download/v10.5/proxy-linux-amd64.tar.gz" "proxy-linux-amd64.tar.gz"
+    tar -xzf proxy-linux-amd64.tar.gz proxy
+    mv -f proxy /usr/bin/goproxy
+    chmod +x /usr/bin/goproxy
+
+    if [[ ${release} == "centos" ]]; then
+        echo -e " ${Tip} Disabling Firewalld..."
+        systemctl stop firewalld
+        systemctl disable firewalld
+    else
+        echo -e " ${Tip} Disabling UFW firewall..."
+        ufw disable
+    fi
+
+    echo -e " ${Tip} Downloading main program files..."
+
     fetch_files
 
-    echo -e " ${Tip} 移动文件到目标目录..."
+    echo -e " ${Tip} Moving main program to the target directory..."
     mkdir -p /usr/local/PortForward
     mv -f slave /usr/local/PortForward/
     chmod +x -R /usr/local/PortForward/slave
 
-    # 生成配置文件
+    # Generate configuration file
     generate_config
 
-    echo -e " ${Tip} 安装完成，配置 systemd 服务..."
+    echo -e " ${Tip} Adding systemd service..."
     mv /usr/local/PortForward/slave/port_forward.sh /usr/local/bin/port_forward.sh
     mv /usr/local/PortForward/slave/port_forward.service /etc/systemd/system/port_forward.service
     systemctl daemon-reload
     systemctl enable port_forward
     echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf
     sysctl -p
-
-    echo -e " ${Info} 安装完成，请根据需求启动服务。"
+    echo -e " ${Tip} Installation complete."
+    exit
 }
 
-# 主函数
-main() {
-    parse_args "$@"
+# Main menu (now simplified to just call Install)
+Menu() {
     Install
 }
 
-main "$@"
+# Start the script
+Menu
