@@ -1,4 +1,8 @@
-
+准备工作
+```shell
+apt-get install -y git unzip curl wget sudo
+```
+然后运行
 ```shell
 bash <(curl -L -s https://ghp.ci/https://raw.githubusercontent.com/chiron688/whmcs_portforward_backend/main/install.sh) \
     -nic 'ens192' \
