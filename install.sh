@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Define variables
-REPO_URL="https://github.com/<your-username>/<your-repo>.git"
+REPO_URL="https://github.com/chiron688/whmcs_portforward_backend.git"
 INSTALL_DIR="/usr/local/PortForward"
 BIN_DIR="/usr/bin"
 BRANCH="main"
