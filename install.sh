@@ -56,6 +56,20 @@ while [[ $# -gt 0 ]]; do
             USE_PROXY=true
             shift 1
             ;;
+        -h|--help)
+            echo "Usage: bash install.sh [options]"
+            echo "Options:"
+            echo "  -nic             Network interface name"
+            echo "  -url             WHMCS API URL"
+            echo "  -key             WHMCS API key"
+            echo "  -sourceip        Source IP address"
+            echo "  -magnification   Traffic magnification (default: 0.5)"
+            echo "  -node_bw_max     Node maximum bandwidth (default: 100)"
+            echo "  -burst           Bandwidth burst (default: false)"
+            echo "  -use_proxy       Use GitHub proxy"
+            echo "  -h, --help       Display this help message"
+            exit 0
+            ;;
         *)
             echo -e "${Error} Unknown option: $1"
             exit 1
@@ -191,6 +205,8 @@ EOF
 # Install function
 Install() {
     check_sys
+    check_dependencies
+
     if [[ ${release} == "centos" ]]; then
         # CentOS installation logic
         yum install wget unzip git -y
@@ -208,33 +224,39 @@ Install() {
         # Debian and Ubuntu installation logic
         apt update
         echo -e " ${Tip} Installing PHP and dependencies..."
-        apt install -y wget git unzip curl software-properties-common
-        add-apt-repository ppa:ondrej/php -y
-        apt update
-        apt install -y php7.0 php7.0-cli php7.0-common php7.0-gd php7.0-ldap php7.0-mbstring php7.0-mysql php7.0-pdo
+        apt install -y wget git unzip curl software-properties-common lsb-release ca-certificates apt-transport-https gnupg2
+
+        if [[ ${release} == "ubuntu" ]]; then
+            # For Ubuntu, add the PPA
+            add-apt-repository ppa:ondrej/php -y
+            apt update
+        fi
+
+        # Install PHP (use version 8.2 or the default available in repositories)
+        apt install -y php php-cli php-common php-gd php-ldap php-mbstring php-mysql php-pdo
     else
         echo -e " ${Error} Unsupported system. Please use a supported system."
         exit 1
     fi
 
     echo -e " ${Tip} Installing Brook..."
-    download_tool "https://github.com/txthinking/brook/releases/download/v20210401/brook_linux_amd64" "/usr/bin/brook"
+    download_tool "https://github.com/txthinking/brook/releases/download/v20210701/brook_linux_amd64" "/usr/bin/brook"
     chmod +x /usr/bin/brook
 
     echo -e " ${Tip} Installing Gost..."
-    download_tool "https://github.com/ginuerzh/gost/releases/download/v2.11.1/gost-linux-amd64-2.11.1.gz" "gost-linux-amd64-2.11.1.gz"
-    gunzip gost-linux-amd64-2.11.1.gz
-    mv -f gost-linux-amd64-2.11.1 /usr/bin/gost
+    download_tool "https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz" "gost-linux-amd64-2.11.5.gz"
+    gunzip gost-linux-amd64-2.11.5.gz
+    mv -f gost-linux-amd64-2.11.5 /usr/bin/gost
     chmod +x /usr/bin/gost
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/20200818.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
+    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/v0.4.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
     tar -xzf tinymapper_binaries.tar.gz
     mv -f tinymapper_amd64 /usr/bin/tinymapper
     chmod +x /usr/bin/tinymapper
 
     echo -e " ${Tip} Installing goproxy..."
-    download_tool "https://github.com/snail007/goproxy/releases/download/v10.5/proxy-linux-amd64.tar.gz" "proxy-linux-amd64.tar.gz"
+    download_tool "https://github.com/snail007/goproxy/releases/download/v11.0/proxy-linux-amd64.tar.gz" "proxy-linux-amd64.tar.gz"
     tar -xzf proxy-linux-amd64.tar.gz proxy
     mv -f proxy /usr/bin/goproxy
     chmod +x /usr/bin/goproxy
@@ -271,10 +293,5 @@ Install() {
     exit
 }
 
-# Main menu (now simplified to just call Install)
-Menu() {
-    Install
-}
-
 # Start the script
-Menu
+Install
