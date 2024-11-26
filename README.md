@@ -1,6 +1,6 @@
 
 ```shell
-bash <(curl -L -s https://raw.githubusercontent.com/chiron688/whmcs_portforward_backend/main/install.sh) \
+bash <(curl -L -s https://ghp.ci/https://raw.githubusercontent.com/chiron688/whmcs_portforward_backend/main/install.sh) \
     -nic 'ens192' \
     -url 'https://www.demo.com/modules/addons/PortForward/apicall.php' \
     -key 'your_api_key' \
