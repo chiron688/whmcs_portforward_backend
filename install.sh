@@ -249,7 +249,7 @@ Install() {
     TINYMAPPER_VERSION="20200818.0"
     GOPROXY_VERSION="v14.7"
 
-    
+
     echo -e " ${Tip} Installing Brook..."
     if [[ -f /usr/bin/brook ]]; then
         echo -e " ${Info} Brook is already installed."
@@ -262,20 +262,31 @@ Install() {
     if [[ -f /usr/bin/gost ]]; then
         echo -e " ${Info} Gost is already installed."
     else
+        # 下载文件
         download_file "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz" "gost.tar.gz"
-        if [[ ! -d gost_${GOST_VERSION}_linux_amd64 ]]; then
-            tar -xzf gost.tar.gz
-        fi
-        if [[ -f gost_${GOST_VERSION}_linux_amd64/gost ]]; then
-            mv -f gost_${GOST_VERSION}_linux_amd64/gost /usr/bin/gost
+        
+        # 解压文件
+        echo -e " ${Tip} Extracting gost.tar.gz..."
+        tar -xzf gost.tar.gz || {
+            echo -e " ${Error} Failed to extract gost.tar.gz!"
+            exit 1
+        }
+
+        # 检查解压结果是否有目标文件
+        if [[ -f "gost" ]]; then
+            echo -e " ${Tip} Moving Gost binary to /usr/bin..."
+            mv -f gost /usr/bin/gost
             chmod +x /usr/bin/gost
             echo -e " ${Tip} Gost installed successfully."
         else
-            echo -e " ${Error} Failed to locate gost binary after extraction."
+            echo -e " ${Error} Gost binary not found after extraction!"
             exit 1
         fi
-        rm -rf gost.tar.gz gost_${GOST_VERSION}_linux_amd64
+
+        # 清理临时文件
+        rm -f gost.tar.gz
     fi
+
 
     echo -e " ${Tip} Installing tinyPortMapper..."
     if [[ -f /usr/bin/tinymapper ]]; then
