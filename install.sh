@@ -236,44 +236,71 @@ Install() {
     GOPROXY_VERSION="v14.7"
 
     echo -e " ${Tip} Installing Brook..."
-    wget -O /usr/bin/brook "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64"
-    chmod +x /usr/bin/brook
+    if [[ -f /usr/bin/brook ]]; then
+        echo -e " ${Info} Brook is already installed."
+    else
+        wget -O /usr/bin/brook "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64"
+        chmod +x /usr/bin/brook
+    fi
 
     echo -e " ${Tip} Installing Gost..."
-    wget -O gost.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz"
-    gunzip gost.gz
-    mv -f gost /usr/bin/gost
-    chmod +x /usr/bin/gost
+    if [[ -f /usr/bin/gost ]]; then
+        echo -e " ${Info} Gost is already installed."
+    else
+        wget -O gost.tar.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz"
+        tar -xzf gost.tar.gz
+        mv -f gost_*_linux_amd64/gost /usr/bin/gost
+        chmod +x /usr/bin/gost
+        rm -rf gost.tar.gz gost_*_linux_amd64
+    fi
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/tinymapper_binaries.tar.gz"
-    tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
-    mv -f tinymapper_amd64 /usr/bin/tinymapper
-    chmod +x /usr/bin/tinymapper
+    if [[ -f /usr/bin/tinymapper ]]; then
+        echo -e " ${Info} tinyPortMapper is already installed."
+    else
+        wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/tinymapper_binaries.tar.gz"
+        tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
+        mv -f tinymapper_amd64 /usr/bin/tinymapper
+        chmod +x /usr/bin/tinymapper
+        rm -f tinymapper.tar.gz
+    fi
 
     echo -e " ${Tip} Installing goproxy..."
-    wget -O proxy.tar.gz "https://ghp.ci/https://github.com/snail007/goproxy/releases/download/${GOPROXY_VERSION}/proxy-linux-amd64.tar.gz"
-    tar -xzf proxy.tar.gz proxy
-    mv -f proxy /usr/bin/goproxy
-    chmod +x /usr/bin/goproxy
+    if [[ -f /usr/bin/goproxy ]]; then
+        echo -e " ${Info} goproxy is already installed."
+    else
+        wget -O proxy.tar.gz "https://ghp.ci/https://github.com/snail007/goproxy/releases/download/${GOPROXY_VERSION}/proxy-linux-amd64.tar.gz"
+        tar -xzf proxy.tar.gz proxy
+        mv -f proxy /usr/bin/goproxy
+        chmod +x /usr/bin/goproxy
+        rm -f proxy.tar.gz
+    fi
 
     if [[ ${release} == "centos" ]]; then
         echo -e " ${Tip} Disabling Firewalld..."
         systemctl stop firewalld
         systemctl disable firewalld
     else
-        echo -e " ${Tip} Disabling UFW firewall..."
-        ufw disable
+        if command -v ufw &> /dev/null; then
+            echo -e " ${Tip} Disabling UFW firewall..."
+            ufw disable
+        else
+            echo -e " ${Info} UFW is not installed; skipping UFW disable step."
+        fi
     fi
 
-    echo -e " ${Tip} Downloading main program files..."
+    # 确保进入 INSTALL_DIR 并检查 slave 目录
+    cd "$INSTALL_DIR" || exit 1
 
-    fetch_files
-
-    echo -e " ${Tip} Moving main program to the target directory..."
-    mkdir -p /usr/local/PortForward
-    mv -f slave /usr/local/PortForward/
-    chmod +x -R /usr/local/PortForward/slave
+    if [[ -d "slave" ]]; then
+        echo -e " ${Tip} Moving main program to the target directory..."
+        mkdir -p /usr/local/PortForward
+        mv -f slave /usr/local/PortForward/
+        chmod +x -R /usr/local/PortForward/slave
+    else
+        echo -e " ${Error} 'slave' directory not found in the repository!"
+        exit 1
+    fi
 
     # Generate configuration file
     generate_config
