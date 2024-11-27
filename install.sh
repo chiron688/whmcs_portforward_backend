@@ -295,7 +295,10 @@ Install() {
     if [[ -d "slave" ]]; then
         echo -e " ${Tip} Moving main program to the target directory..."
         mkdir -p /usr/local/PortForward
-        mv -f slave /usr/local/PortForward/
+        cp -r slave /usr/local/PortForward/ || {
+            echo -e " ${Error} Failed to copy slave directory!"
+            exit 1
+        }
         chmod +x -R /usr/local/PortForward/slave
     else
         echo -e " ${Error} 'slave' directory not found in the repository!"
@@ -303,17 +306,48 @@ Install() {
     fi
 
     # Generate configuration file
-    generate_config
+    echo -e " ${Tip} Generating configuration file..."
+    generate_config || {
+        echo -e " ${Error} Failed to generate configuration file!"
+        exit 1
+    }
 
     echo -e " ${Tip} Adding systemd service..."
-    mv /usr/local/PortForward/slave/port_forward.sh /usr/local/bin/port_forward.sh
-    mv /usr/local/PortForward/slave/port_forward.service /etc/systemd/system/port_forward.service
-    systemctl daemon-reload
-    systemctl enable port_forward
-    echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf
-    sysctl -p
+    if [[ -f /usr/local/PortForward/slave/port_forward.sh && -f /usr/local/PortForward/slave/port_forward.service ]]; then
+        cp /usr/local/PortForward/slave/port_forward.sh /usr/local/bin/port_forward.sh || {
+            echo -e " ${Error} Failed to copy port_forward.sh!"
+            exit 1
+        }
+        cp /usr/local/PortForward/slave/port_forward.service /etc/systemd/system/port_forward.service || {
+            echo -e " ${Error} Failed to copy port_forward.service!"
+            exit 1
+        }
+        systemctl daemon-reload || {
+            echo -e " ${Error} Failed to reload systemd daemon!"
+            exit 1
+        }
+        systemctl enable port_forward || {
+            echo -e " ${Error} Failed to enable port_forward service!"
+            exit 1
+        }
+    else
+        echo -e " ${Error} Required files 'port_forward.sh' or 'port_forward.service' not found!"
+        exit 1
+    fi
+
+    echo -e " ${Tip} Enabling IP forwarding..."
+    echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf || {
+        echo -e " ${Error} Failed to update sysctl.conf!"
+        exit 1
+    }
+    sysctl -p || {
+        echo -e " ${Error} Failed to apply sysctl settings!"
+        exit 1
+    }
+
     echo -e " ${Tip} Installation complete."
-    exit
+    exit 0
+
 }
 
 # Start the script
