@@ -120,6 +120,20 @@ fetch_files() {
     fi
 }
 
+# Function to download and check existing files
+download_file() {
+    local url="$1"
+    local dest="$2"
+    if [[ -f "$dest" ]]; then
+        echo -e " ${Info} File $dest already exists, skipping download."
+    else
+        echo -e " ${Tip} Downloading $dest..."
+        wget -O "$dest" "$url" || {
+            echo -e " ${Error} Failed to download $url"
+            exit 1
+        }
+    fi
+}
 # Get default network interface
 get_default_nic() {
     local default_nic=$(ip route | grep default | awk '{print $5}' | head -n 1)
@@ -235,11 +249,12 @@ Install() {
     TINYMAPPER_VERSION="20200818.0"
     GOPROXY_VERSION="v14.7"
 
+    
     echo -e " ${Tip} Installing Brook..."
     if [[ -f /usr/bin/brook ]]; then
         echo -e " ${Info} Brook is already installed."
     else
-        wget -O /usr/bin/brook "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64"
+        download_file "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64" "/usr/bin/brook"
         chmod +x /usr/bin/brook
     fi
 
@@ -247,21 +262,36 @@ Install() {
     if [[ -f /usr/bin/gost ]]; then
         echo -e " ${Info} Gost is already installed."
     else
-        wget -O gost.tar.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz"
-        tar -xzf gost.tar.gz
-        mv -f gost_*_linux_amd64/gost /usr/bin/gost
-        chmod +x /usr/bin/gost
-        rm -rf gost.tar.gz gost_*_linux_amd64
+        download_file "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz" "gost.tar.gz"
+        if [[ ! -d gost_${GOST_VERSION}_linux_amd64 ]]; then
+            tar -xzf gost.tar.gz
+        fi
+        if [[ -f gost_${GOST_VERSION}_linux_amd64/gost ]]; then
+            mv -f gost_${GOST_VERSION}_linux_amd64/gost /usr/bin/gost
+            chmod +x /usr/bin/gost
+            echo -e " ${Tip} Gost installed successfully."
+        else
+            echo -e " ${Error} Failed to locate gost binary after extraction."
+            exit 1
+        fi
+        rm -rf gost.tar.gz gost_${GOST_VERSION}_linux_amd64
     fi
 
     echo -e " ${Tip} Installing tinyPortMapper..."
     if [[ -f /usr/bin/tinymapper ]]; then
         echo -e " ${Info} tinyPortMapper is already installed."
     else
-        wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/tinymapper_binaries.tar.gz"
-        tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
-        mv -f tinymapper_amd64 /usr/bin/tinymapper
-        chmod +x /usr/bin/tinymapper
+        download_file "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/tinymapper_binaries.tar.gz" "tinymapper.tar.gz"
+        if [[ ! -f tinymapper_amd64 ]]; then
+            tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
+        fi
+        if [[ -f tinymapper_amd64 ]]; then
+            mv -f tinymapper_amd64 /usr/bin/tinymapper
+            chmod +x /usr/bin/tinymapper
+        else
+            echo -e " ${Error} Failed to locate tinymapper binary after extraction."
+            exit 1
+        fi
         rm -f tinymapper.tar.gz
     fi
 
@@ -269,26 +299,35 @@ Install() {
     if [[ -f /usr/bin/goproxy ]]; then
         echo -e " ${Info} goproxy is already installed."
     else
-        wget -O proxy.tar.gz "https://ghp.ci/https://github.com/snail007/goproxy/releases/download/${GOPROXY_VERSION}/proxy-linux-amd64.tar.gz"
-        tar -xzf proxy.tar.gz proxy
-        mv -f proxy /usr/bin/goproxy
-        chmod +x /usr/bin/goproxy
+        download_file "https://ghp.ci/https://github.com/snail007/goproxy/releases/download/${GOPROXY_VERSION}/proxy-linux-amd64.tar.gz" "proxy.tar.gz"
+        if [[ ! -f proxy ]]; then
+            tar -xzf proxy.tar.gz proxy
+        fi
+        if [[ -f proxy ]]; then
+            mv -f proxy /usr/bin/goproxy
+            chmod +x /usr/bin/goproxy
+        else
+            echo -e " ${Error} Failed to locate proxy binary after extraction."
+            exit 1
+        fi
         rm -f proxy.tar.gz
     fi
 
+    # Disable firewalls based on the release type
     if [[ ${release} == "centos" ]]; then
         echo -e " ${Tip} Disabling Firewalld..."
-        systemctl stop firewalld
-        systemctl disable firewalld
+        systemctl stop firewalld || echo -e " ${Warn} Failed to stop firewalld."
+        systemctl disable firewalld || echo -e " ${Warn} Failed to disable firewalld."
     else
         if command -v ufw &> /dev/null; then
             echo -e " ${Tip} Disabling UFW firewall..."
-            ufw disable
+            ufw disable || echo -e " ${Warn} Failed to disable UFW."
         else
             echo -e " ${Info} UFW is not installed; skipping UFW disable step."
         fi
     fi
 
+    fetch_files
     # 确保进入 INSTALL_DIR 并检查 slave 目录
     cd "$INSTALL_DIR" || exit 1
 
