@@ -144,9 +144,8 @@ get_default_nic() {
     fi
 }
 
-# Generate configuration
 generate_config() {
-    # If nic is not provided, attempt to detect it
+    # 如果未提供网络接口，尝试自动检测
     if [[ -z "$nic" ]]; then
         local detected_nic=$(get_default_nic)
         echo -e " ${Tip} Detected primary network interface: ${detected_nic}"
@@ -154,7 +153,7 @@ generate_config() {
         nic=${nic_input:-$detected_nic}
     fi
 
-    # If url is not provided, prompt for it
+    # 如果未提供 API URL，提示用户输入
     if [[ -z "$url" ]]; then
         read -p "Please enter the WHMCS API URL (e.g., https://www.example.com/modules/addons/PortForward/apicall.php): " url_input
         while [[ -z "$url_input" ]]; do
@@ -164,7 +163,7 @@ generate_config() {
         url="$url_input"
     fi
 
-    # If key is not provided, prompt for it
+    # 如果未提供 API 密钥，提示用户输入
     if [[ -z "$key" ]]; then
         read -p "Please enter the WHMCS API key: " key_input
         while [[ -z "$key_input" ]]; do
@@ -174,7 +173,7 @@ generate_config() {
         key="$key_input"
     fi
 
-    # If source IP is not provided, attempt to detect it
+    # 如果未提供源 IP，尝试自动检测
     if [[ -z "$sourceip" ]]; then
         local detected_ip=$(ip addr show "$nic" | grep "inet " | awk '{print $2}' | cut -d/ -f1 | head -n 1)
         if [[ -z "$detected_ip" ]]; then
@@ -185,12 +184,13 @@ generate_config() {
         sourceip=${ip_input:-$detected_ip}
     fi
 
-    # Set default values if not provided
+    # 设置默认值
     magnification=${magnification:-0.5}
     node_bw_max=${node_bw_max:-100}
     burst=${burst:-false}
+    token=${token:-''}
 
-    # Generate the configuration file
+    # 生成配置文件
     cat > /usr/local/PortForward/slave/config.php <<EOF
 <?php
 \$nic = '${nic}'; // Network interface name
@@ -200,11 +200,13 @@ generate_config() {
 \$magnification = '${magnification}'; // Traffic magnification
 \$node_bw_max = '${node_bw_max}'; // Node maximum bandwidth
 \$burst = '${burst}'; // Bandwidth burst
+\$token = '${token}'; // Token (auto-generated or manually set)
 ?>
 EOF
 
     echo -e " ${Info} config.php has been generated."
 }
+
 
 # Install function
 Install() {
