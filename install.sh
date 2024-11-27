@@ -101,44 +101,6 @@ check_sys() {
     bit=$(uname -m)
 }
 
-# Function to download the latest release from GitHub
-download_latest() {
-    local repo=$1
-    local binary_name=$2
-    local dest_path=$3
-
-    # Fetch the latest release URL using GitHub API
-    local latest_url=$(curl -sL "https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
-
-    if [[ -n "$latest_url" ]]; then
-        echo -e " [Tip] Downloading ${binary_name} from ${repo}..."
-        echo -e " [Info] Download link: ${latest_url}"
-        download_tool "$latest_url" "$dest_path"
-    else
-        echo -e " [ERROR] Failed to fetch latest release for ${binary_name} from ${repo}."
-        exit 1
-    fi
-}
-
-# Download tool with progress display and detailed error handling
-download_tool() {
-    local url=$1
-    local output=$2
-
-    echo -e " [Info] Starting download to ${output}..."
-    wget --progress=bar:force:noscroll "$url" -O "$output" 2>&1 | \
-    while read -r line; do
-        echo -ne "\r${line}" # Display progress in the same line
-    done
-
-    if [[ $? -ne 0 ]]; then
-        echo -e "\n [ERROR] Failed to download $output from URL: $url"
-        exit 1
-    fi
-
-    echo -e "\n [Info] Download completed: ${output}"
-}
-
 # Fetch files from GitHub
 fetch_files() {
     if [[ $USE_PROXY == true ]]; then
@@ -230,7 +192,6 @@ EOF
     echo -e " ${Info} config.php has been generated."
 }
 
-
 # Install function
 Install() {
     check_sys
@@ -268,23 +229,30 @@ Install() {
         exit 1
     fi
 
+    # Define versions
+    BROOK_VERSION="v20210701"
+    GOST_VERSION="v2.11.1"
+    TINYMAPPER_VERSION="v2.0"
+    GOPROXY_VERSION="v10.0"
+
     echo -e " ${Tip} Installing Brook..."
-    download_latest "txthinking/brook" "linux_amd64" "/usr/bin/brook"
+    wget -O /usr/bin/brook "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64"
+    chmod +x /usr/bin/brook
 
     echo -e " ${Tip} Installing Gost..."
-    download_latest "ginuerzh/gost" "linux-amd64" "gost.gz"
+    wget -O gost.gz https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/${GOST_VERSION}/gost-linux-amd64-${GOST_VERSION}.gz"
     gunzip gost.gz
     mv -f gost /usr/bin/gost
     chmod +x /usr/bin/gost
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    download_latest "wangyu-/tinyPortMapper" "binaries.tar.gz" "tinymapper.tar.gz"
+    wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/binaries.tar.gz"
     tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
     mv -f tinymapper_amd64 /usr/bin/tinymapper
     chmod +x /usr/bin/tinymapper
 
     echo -e " ${Tip} Installing goproxy..."
-    download_latest "snail007/goproxy" "linux-amd64.tar.gz" "proxy.tar.gz"
+    wget -O proxy.tar.gz "https://ghp.ci/https://github.com/snail007/goproxy/releases/download/${GOPROXY_VERSION}/proxy-linux-amd64.tar.gz"
     tar -xzf proxy.tar.gz proxy
     mv -f proxy /usr/bin/goproxy
     chmod +x /usr/bin/goproxy
