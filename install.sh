@@ -250,7 +250,7 @@ Install() {
     chmod +x /usr/bin/gost
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/v0.4.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
+    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/20200818.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
     tar -xzf tinymapper_binaries.tar.gz
     mv -f tinymapper_amd64 /usr/bin/tinymapper
     chmod +x /usr/bin/tinymapper
