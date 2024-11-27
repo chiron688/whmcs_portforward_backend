@@ -231,22 +231,22 @@ Install() {
 
     # Define versions
     BROOK_VERSION="v20210701"
-    GOST_VERSION="v2.11.1"
-    TINYMAPPER_VERSION="v2.0"
-    GOPROXY_VERSION="v10.0"
+    GOST_VERSION="2.12.0"
+    TINYMAPPER_VERSION="20200818.0"
+    GOPROXY_VERSION="v14.7"
 
     echo -e " ${Tip} Installing Brook..."
     wget -O /usr/bin/brook "https://ghp.ci/https://github.com/txthinking/brook/releases/download/${BROOK_VERSION}/brook_linux_amd64"
     chmod +x /usr/bin/brook
 
     echo -e " ${Tip} Installing Gost..."
-    wget -O gost.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/${GOST_VERSION}/gost-linux-amd64-${GOST_VERSION}.gz"
+    wget -O gost.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/v${GOST_VERSION}/gost_${GOST_VERSION}_linux_amd64.tar.gz"
     gunzip gost.gz
     mv -f gost /usr/bin/gost
     chmod +x /usr/bin/gost
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/binaries.tar.gz"
+    wget -O tinymapper.tar.gz "https://ghp.ci/https://github.com/wangyu-/tinyPortMapper/releases/download/${TINYMAPPER_VERSION}/tinymapper_binaries.tar.gzz"
     tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
     mv -f tinymapper_amd64 /usr/bin/tinymapper
     chmod +x /usr/bin/tinymapper
