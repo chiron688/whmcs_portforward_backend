@@ -188,7 +188,6 @@ generate_config() {
     magnification=${magnification:-0.5}
     node_bw_max=${node_bw_max:-100}
     burst=${burst:-false}
-    token=${token:-''}
 
     # 生成配置文件
     cat > /usr/local/PortForward/slave/config.php <<EOF
@@ -200,8 +199,7 @@ generate_config() {
 \$magnification = '${magnification}'; // Traffic magnification
 \$node_bw_max = '${node_bw_max}'; // Node maximum bandwidth
 \$burst = '${burst}'; // Bandwidth burst
-\$token = '${token}'; // Token (auto-generated or manually set)
-?>
+
 EOF
 
     echo -e " ${Info} config.php has been generated."
