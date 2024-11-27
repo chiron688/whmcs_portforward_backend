@@ -223,7 +223,7 @@ Install() {
         rpm -Uvh https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
         rpm -Uvh https://mirror.webtatic.com/yum/el7/webtatic-release.rpm
         echo -e " ${Tip} Installing PHP 7.0..."
-        yum install -y php70w php70w-cli php70w-common php70w-gd php70w-ldap php70w-mbstring php70w-mcrypt php70w-mysql php70w-pdo
+        yum install -y php70w php70w-cli php70w-common php70w-gd php70w-ldap php70w-mbstring php70w-mcrypt php70w-mysql php70w-pdo php70w-curl
     elif [[ ${release} == "debian" || ${release} == "ubuntu" ]]; then
         # Debian and Ubuntu installation logic
         apt update
@@ -237,7 +237,7 @@ Install() {
         fi
 
         # Install PHP (use version 8.2 or the default available in repositories)
-        apt install -y php php-cli php-common php-gd php-ldap php-mbstring php-mysql php-pdo
+        apt install -y php php-cli php-common php-gd php-ldap php-mbstring php-mysql php-pdo php-curl
     else
         echo -e " ${Error} Unsupported system. Please use a supported system."
         exit 1
