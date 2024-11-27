@@ -358,21 +358,34 @@ Install() {
         exit 1
     }
 
-    # 安装 systemd 服务
+    # 添加 systemd 服务
     echo -e " ${Tip} Adding systemd service..."
     if [[ -f slave/port_forward.sh && -f slave/port_forward.service ]]; then
-        cp slave/port_forward.sh "$BIN_DIR/port_forward.sh" || {
+        # 确保目标目录存在
+        mkdir -p /usr/local/bin
+        
+        # 复制 bash 脚本
+        echo -e " ${Tip} Copying port_forward.sh..."
+        cp slave/port_forward.sh /usr/local/bin/port_forward.sh || {
             echo -e " ${Error} Failed to copy port_forward.sh!"
             exit 1
         }
+        chmod +x /usr/local/bin/port_forward.sh
+
+        # 复制 systemd 服务文件
+        echo -e " ${Tip} Copying port_forward.service..."
         cp slave/port_forward.service /etc/systemd/system/port_forward.service || {
             echo -e " ${Error} Failed to copy port_forward.service!"
             exit 1
         }
+
+        # 重新加载 systemd 守护进程
         systemctl daemon-reload || {
             echo -e " ${Error} Failed to reload systemd daemon!"
             exit 1
         }
+
+        # 启用服务
         systemctl enable port_forward || {
             echo -e " ${Error} Failed to enable port_forward service!"
             exit 1
@@ -382,19 +395,27 @@ Install() {
         exit 1
     fi
 
+
     # 启用 IP 转发
     echo -e " ${Tip} Enabling IP forwarding..."
-    echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf || {
-        echo -e " ${Error} Failed to update sysctl.conf!"
-        exit 1
-    }
+
+    # 检查是否已经存在正确的配置
+    if grep -q "^net.ipv4.ip_forward = 1" /etc/sysctl.conf; then
+        echo -e " ${Info} IP forwarding is already enabled in /etc/sysctl.conf."
+    else
+        echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf || {
+            echo -e " ${Error} Failed to update sysctl.conf!"
+            exit 1
+        }
+        echo -e " ${Tip} Added 'net.ipv4.ip_forward = 1' to /etc/sysctl.conf."
+    fi
+
+    # 应用 sysctl 配置
     sysctl -p || {
         echo -e " ${Error} Failed to apply sysctl settings!"
         exit 1
     }
 
-    echo -e " ${Tip} Installation complete."
-    exit 0
 
 }
 
