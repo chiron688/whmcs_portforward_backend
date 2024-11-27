@@ -339,36 +339,33 @@ Install() {
     fi
 
     fetch_files
-    # 确保进入 INSTALL_DIR 并检查 slave 目录
+
+    # 进入克隆目录并验证 slave 目录
     cd "$INSTALL_DIR" || exit 1
 
     if [[ -d "slave" ]]; then
-        echo -e " ${Tip} Moving main program to the target directory..."
-        mkdir -p /usr/local/PortForward
-        cp -r slave /usr/local/PortForward/ || {
-            echo -e " ${Error} Failed to copy slave directory!"
-            exit 1
-        }
-        chmod +x -R /usr/local/PortForward/slave
+        echo -e " ${Tip} Validating slave directory..."
+        chmod +x -R slave
     else
         echo -e " ${Error} 'slave' directory not found in the repository!"
         exit 1
     fi
 
-    # Generate configuration file
+    # 生成配置文件
     echo -e " ${Tip} Generating configuration file..."
     generate_config || {
         echo -e " ${Error} Failed to generate configuration file!"
         exit 1
     }
 
+    # 安装 systemd 服务
     echo -e " ${Tip} Adding systemd service..."
-    if [[ -f /usr/local/PortForward/slave/port_forward.sh && -f /usr/local/PortForward/slave/port_forward.service ]]; then
-        cp /usr/local/PortForward/slave/port_forward.sh /usr/local/bin/port_forward.sh || {
+    if [[ -f slave/port_forward.sh && -f slave/port_forward.service ]]; then
+        cp slave/port_forward.sh "$BIN_DIR/port_forward.sh" || {
             echo -e " ${Error} Failed to copy port_forward.sh!"
             exit 1
         }
-        cp /usr/local/PortForward/slave/port_forward.service /etc/systemd/system/port_forward.service || {
+        cp slave/port_forward.service /etc/systemd/system/port_forward.service || {
             echo -e " ${Error} Failed to copy port_forward.service!"
             exit 1
         }
@@ -385,6 +382,7 @@ Install() {
         exit 1
     fi
 
+    # 启用 IP 转发
     echo -e " ${Tip} Enabling IP forwarding..."
     echo net.ipv4.ip_forward = 1 >> /etc/sysctl.conf || {
         echo -e " ${Error} Failed to update sysctl.conf!"
