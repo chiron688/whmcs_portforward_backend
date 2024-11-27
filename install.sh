@@ -101,6 +101,24 @@ check_sys() {
     bit=$(uname -m)
 }
 
+# Function to download the latest release from GitHub
+download_latest() {
+    local repo=$1
+    local binary_name=$2
+    local dest_path=$3
+
+    # Fetch the latest release URL using GitHub API
+    local latest_url=$(curl -sL "https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
+
+    if [[ -n "$latest_url" ]]; then
+        echo -e " ${Tip} Downloading ${binary_name} from ${repo}..."
+        download_tool "$latest_url" "$dest_path"
+    else
+        echo -e " ${Error} Failed to fetch latest release for ${binary_name} from ${repo}."
+        exit 1
+    fi
+}
+
 # Download tool
 download_tool() {
     local url=$1
@@ -202,6 +220,7 @@ EOF
     echo -e " ${Info} config.php has been generated."
 }
 
+
 # Install function
 Install() {
     check_sys
@@ -240,24 +259,23 @@ Install() {
     fi
 
     echo -e " ${Tip} Installing Brook..."
-    download_tool "https://github.com/txthinking/brook/releases/download/v20210701/brook_linux_amd64" "/usr/bin/brook"
-    chmod +x /usr/bin/brook
+    download_latest "txthinking/brook" "linux_amd64" "/usr/bin/brook"
 
     echo -e " ${Tip} Installing Gost..."
-    download_tool "https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz" "gost-linux-amd64-2.11.5.gz"
-    gunzip gost-linux-amd64-2.11.5.gz
-    mv -f gost-linux-amd64-2.11.5 /usr/bin/gost
+    download_latest "ginuerzh/gost" "linux-amd64" "gost.gz"
+    gunzip gost.gz
+    mv -f gost /usr/bin/gost
     chmod +x /usr/bin/gost
 
     echo -e " ${Tip} Installing tinyPortMapper..."
-    download_tool "https://github.com/wangyu-/tinyPortMapper/releases/download/20200818.0/tinymapper_binaries.tar.gz" "tinymapper_binaries.tar.gz"
-    tar -xzf tinymapper_binaries.tar.gz
+    download_latest "wangyu-/tinyPortMapper" "binaries.tar.gz" "tinymapper.tar.gz"
+    tar -xzf tinymapper.tar.gz --wildcards "*_amd64"
     mv -f tinymapper_amd64 /usr/bin/tinymapper
     chmod +x /usr/bin/tinymapper
 
     echo -e " ${Tip} Installing goproxy..."
-    download_tool "https://github.com/snail007/goproxy/releases/download/v11.0/proxy-linux-amd64.tar.gz" "proxy-linux-amd64.tar.gz"
-    tar -xzf proxy-linux-amd64.tar.gz proxy
+    download_latest "snail007/goproxy" "linux-amd64.tar.gz" "proxy.tar.gz"
+    tar -xzf proxy.tar.gz proxy
     mv -f proxy /usr/bin/goproxy
     chmod +x /usr/bin/goproxy
 
