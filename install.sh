@@ -240,7 +240,7 @@ Install() {
     chmod +x /usr/bin/brook
 
     echo -e " ${Tip} Installing Gost..."
-    wget -O gost.gz https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/${GOST_VERSION}/gost-linux-amd64-${GOST_VERSION}.gz"
+    wget -O gost.gz "https://ghp.ci/https://github.com/ginuerzh/gost/releases/download/${GOST_VERSION}/gost-linux-amd64-${GOST_VERSION}.gz"
     gunzip gost.gz
     mv -f gost /usr/bin/gost
     chmod +x /usr/bin/gost
