@@ -363,7 +363,7 @@ Install() {
     if [[ -f slave/port_forward.sh && -f slave/port_forward.service ]]; then
         # 确保目标目录存在
         mkdir -p /usr/local/bin
-        
+
         # 复制 bash 脚本
         echo -e " ${Tip} Copying port_forward.sh..."
         cp slave/port_forward.sh /usr/local/bin/port_forward.sh || {
@@ -380,14 +380,28 @@ Install() {
         }
 
         # 重新加载 systemd 守护进程
+        echo -e " ${Tip} Reloading systemd daemon..."
         systemctl daemon-reload || {
             echo -e " ${Error} Failed to reload systemd daemon!"
             exit 1
         }
 
-        # 启用服务
+        # 启用并启动服务
+        echo -e " ${Tip} Enabling port_forward service..."
         systemctl enable port_forward || {
             echo -e " ${Error} Failed to enable port_forward service!"
+            exit 1
+        }
+
+        echo -e " ${Tip} Starting port_forward service..."
+        systemctl start port_forward || {
+            echo -e " ${Error} Failed to start port_forward service!"
+            exit 1
+        }
+
+        # 检查服务状态
+        systemctl status port_forward --no-pager || {
+            echo -e " ${Error} PortForward service failed to start!"
             exit 1
         }
     else
