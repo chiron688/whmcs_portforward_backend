@@ -108,7 +108,7 @@ download_latest() {
     local dest_path=$3
 
     # Fetch the latest release URL using GitHub API
-    local latest_url=$(curl -sL "https://fastgit.cc/https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
+    local latest_url=$(curl -sL "https://ghproxy.cc/https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
 
     if [[ -n "$latest_url" ]]; then
         echo -e " [Tip] Downloading ${binary_name} from ${repo}..."
