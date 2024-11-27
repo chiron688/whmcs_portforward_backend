@@ -108,25 +108,35 @@ download_latest() {
     local dest_path=$3
 
     # Fetch the latest release URL using GitHub API
-    local latest_url=$(curl -sL "https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
+    local latest_url=$(curl -sL "https://fastgit.cc/https://api.github.com/repos/${repo}/releases/latest" | grep "browser_download_url" | grep "${binary_name}" | cut -d '"' -f 4)
 
     if [[ -n "$latest_url" ]]; then
-        echo -e " ${Tip} Downloading ${binary_name} from ${repo}..."
+        echo -e " [Tip] Downloading ${binary_name} from ${repo}..."
+        echo -e " [Info] Download link: ${latest_url}"
         download_tool "$latest_url" "$dest_path"
     else
-        echo -e " ${Error} Failed to fetch latest release for ${binary_name} from ${repo}."
+        echo -e " [ERROR] Failed to fetch latest release for ${binary_name} from ${repo}."
         exit 1
     fi
 }
 
-# Download tool
+# Download tool with progress display and detailed error handling
 download_tool() {
     local url=$1
     local output=$2
-    wget -q "$url" -O "$output" || {
-        echo -e " ${Error} Failed to download $output from URL: $url"
+
+    echo -e " [Info] Starting download to ${output}..."
+    wget --progress=bar:force:noscroll "$url" -O "$output" 2>&1 | \
+    while read -r line; do
+        echo -ne "\r${line}" # Display progress in the same line
+    done
+
+    if [[ $? -ne 0 ]]; then
+        echo -e "\n [ERROR] Failed to download $output from URL: $url"
         exit 1
-    }
+    fi
+
+    echo -e "\n [Info] Download completed: ${output}"
 }
 
 # Fetch files from GitHub
